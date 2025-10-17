@@ -6,15 +6,20 @@ import * as z from 'zod';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { useState } from 'react';
+
+const positions = [
+  'Chairman', 'Vice-Chairman', 'Treasurer 1', 'Treasurer 2',
+  'Social Director 1', 'Social Director 2',
+  'Welfare Director 1', 'Welfare Director 2',
+  'PRO 1', 'PRO 2',
+  'Secretary 1', 'Secretary 2'
+] as const;
 
 const schema = z.object({
   name: z.string().min(1, 'Name required').max(100),
   email: z.email('Invalid email'),
-  position: z.enum([
-    'Chairman', 'Vice-Chairman', 'Social Director 1', 'Social Director 2',
-    'Welfare Director 1', 'Welfare Director 2', 'PRO 1', 'PRO 2',
-    'Secretary 1', 'Secretary 2'
-  ]),
+  position: z.string().nonempty('Position is required').refine((val) => (positions as readonly string[]).includes(val), { message: 'Please select a valid position' }),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -23,25 +28,26 @@ export default function CandidateForm() {
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
   });
+  const [isLoading, setIsLoading] = useState(false); // 👈 Loading state
 
   const onSubmit = async (data: FormData) => {
+    setIsLoading(true); // 👈 Start loading
     try {
       await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/candidates/register`, data);
-    //   alert('Candidate registered! Committee notified.');
       toast.success('Candidate registered successfully!');
       reset();
     } catch (err: unknown) {
+      let message = 'An unexpected error occurred';
       if (axios.isAxiosError(err)) {
-        const message = err.response?.data?.message ?? err.message ?? 'An unknown error occurred';
-        // alert('Error: ' + message);
-        toast.error('Error: ' + message);
+        message = err.response?.data?.message || err.message || 'Request failed';
       } else if (err instanceof Error) {
-        // alert('Error: ' + err.message);
-        toast.error('Error: ' + err.message);
+        message = err.message;
       } else {
-        // alert('Error: An unexpected error occurred');
-        toast.error('Error: An unexpected error occurred');
+        message = String(err);
       }
+      toast.error('Error: ' + message);
+    } finally {
+      setIsLoading(false); // 👈 Always stop loading
     }
   };
 
@@ -50,30 +56,52 @@ export default function CandidateForm() {
       <h2 className="text-2xl font-bold mb-4">Register as Candidate</h2>
       
       <div className="mb-4">
-        <label className="block text-sm font-medium">Name</label>
-        <input {...register('name')} className="w-full border p-2 rounded" />
-        {errors.name && <p className="text-red-500 text-xs">{errors.name.message}</p>}
+        <label className="block text-sm font-medium text-gray-700">Name</label>
+        <input
+          {...register('name')}
+          className="w-full border border-gray-300 p-2 rounded mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          disabled={isLoading}
+        />
+        {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>}
       </div>
       
       <div className="mb-4">
-        <label className="block text-sm font-medium">Email</label>
-        <input {...register('email')} type="email" className="w-full border p-2 rounded" />
-        {errors.email && <p className="text-red-500 text-xs">{errors.email.message}</p>}
+        <label className="block text-sm font-medium text-gray-700">Email</label>
+        <input
+          {...register('email')}
+          type="email"
+          className="w-full border border-gray-300 p-2 rounded mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          disabled={isLoading}
+        />
+        {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
       </div>
       
       <div className="mb-4">
-        <label className="block text-sm font-medium">Position</label>
-        <select {...register('position')} className="w-full border p-2 rounded">
+        <label className="block text-sm font-medium text-gray-700">Position</label>
+        <select
+          {...register('position')}
+          className="w-full border border-gray-300 p-2 rounded mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          disabled={isLoading}
+        >
           <option value="">Select...</option>
-          {schema.shape.position.options.map(pos => (
-            <option key={pos} value={pos}>{pos}</option>
+          {positions.map((pos) => (
+            <option key={pos} value={pos}>
+              {pos}
+            </option>
           ))}
         </select>
-        {errors.position && <p className="text-red-500 text-xs">{errors.position.message}</p>}
       </div>
       
-      <button type="submit" className="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600">
-        Submit
+      <button
+        type="submit"
+        disabled={isLoading}
+        className={`w-full p-2 rounded text-white transition duration-200 ${
+          isLoading
+            ? 'bg-gray-400 cursor-not-allowed'
+            : 'bg-blue-500 hover:bg-blue-600'
+        }`}
+      >
+        {isLoading ? 'Submitting...' : 'Submit'}
       </button>
     </form>
   );
