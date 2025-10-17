@@ -6,6 +6,7 @@ import * as z from 'zod';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-toastify';
+import { useState } from 'react';
 
 const schema = z.object({
   email: z.email('Invalid email'),
@@ -19,12 +20,13 @@ export default function Signup() {
     resolver: zodResolver(schema),
   });
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false); // 👈 Loading state
 
   const onSubmit = async (data: FormData) => {
+    setIsLoading(true); // 👈 Start loading
     try {
       await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/committee/signup`, data);
-    //   alert('Signup successful! Now login.');
-        toast.success('Signup successful! Now login.');
+      toast.success('Signup successful! Now login.');
       router.push('/committee/login');
     } catch (err: unknown) {
       let message = 'An unknown error occurred';
@@ -38,11 +40,12 @@ export default function Signup() {
         try {
           message = JSON.stringify(err);
         } catch {
-          // ignore JSON stringify errors and keep fallback message
+          // ignore
         }
       }
-    //   alert('Error: ' + message);
-        toast.error('Error: ' + message);
+      toast.error('Error: ' + message);
+    } finally {
+      setIsLoading(false); // 👈 Stop loading regardless of success/failure
     }
   };
 
@@ -58,6 +61,7 @@ export default function Signup() {
             type="email" 
             className="w-full border border-gray-300 p-2 rounded mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500" 
             placeholder="committee@example.com"
+            disabled={isLoading} // Optional: disable input during submit
           />
           {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
         </div>
@@ -69,15 +73,21 @@ export default function Signup() {
             type="text" 
             className="w-full border border-gray-300 p-2 rounded mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500" 
             placeholder="Your surname"
+            disabled={isLoading} // Optional
           />
           {errors.surname && <p className="text-red-500 text-xs mt-1">{errors.surname.message}</p>}
         </div>
         
         <button 
           type="submit" 
-          className="w-full bg-green-500 text-white p-2 rounded hover:bg-green-600 transition duration-200"
+          disabled={isLoading} // 👈 Prevent double submission
+          className={`w-full p-2 rounded text-white transition duration-200 ${
+            isLoading 
+              ? 'bg-gray-400 cursor-not-allowed' 
+              : 'bg-green-500 hover:bg-green-600'
+          }`}
         >
-          Signup
+          {isLoading ? 'Signing up...' : 'Signup'}
         </button>
         
         <p className="mt-4 text-center text-sm text-gray-600">
