@@ -52,7 +52,7 @@ export default function Vote() {
   useEffect(() => {
     const fetchCandidates = async () => {
       try {
-        const res = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/candidates`);
+        const res = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/candidates`);
         // Group candidates by position
         const grouped = res.data.data.reduce((acc: CandidateGroup, candidate: Candidate) => {
           acc[candidate.position] = acc[candidate.position] || [];

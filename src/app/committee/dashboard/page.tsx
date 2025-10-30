@@ -36,7 +36,7 @@ export default function Dashboard() {
       try {
         setLoading(true);
         const token = localStorage.getItem('token');
-        const res = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/committee/candidates`, {
+        const res = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/committee/candidates`, {
           headers: { Authorization: `Bearer ${token}` }
         });
 
