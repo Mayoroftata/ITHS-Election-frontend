@@ -16,12 +16,12 @@ interface Candidate {
   position: string;
 }
 
-// Group candidates by position for easier dropdown rendering
 interface CandidateGroup {
   [key: string]: Candidate[];
 }
 
 const schema = z.object({
+  voterName: z.string().min(1, 'Name is required').min(2, 'Name must be at least 2 characters'),
   voterEmail: z.string().email('Invalid email'),
   position: z.enum([
     'Chairman',
@@ -41,19 +41,19 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 export default function Vote() {
-  const { register, handleSubmit, formState: { errors }, watch, resetField } = useForm<FormData>({
+  const { register, handleSubmit, formState: { errors }, watch, reset } = useForm<FormData>({
     resolver: zodResolver(schema),
   });
   const [candidates, setCandidates] = useState<CandidateGroup>({});
   const [loading, setLoading] = useState(true);
-  const selectedPosition = watch('position'); // Watch position to filter candidates
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const selectedPosition = watch('position');
 
   // Fetch candidates on mount
   useEffect(() => {
     const fetchCandidates = async () => {
       try {
         const res = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/candidates`);
-        // Group candidates by position
         const grouped = res.data.data.reduce((acc: CandidateGroup, candidate: Candidate) => {
           acc[candidate.position] = acc[candidate.position] || [];
           acc[candidate.position].push(candidate);
@@ -71,22 +71,34 @@ export default function Vote() {
   }, []);
 
   const onSubmit = async (data: FormData) => {
+    setIsSubmitting(true);
     try {
       await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/votes`, data);
       toast.success('Vote submitted successfully!', {
         position: 'top-right',
         autoClose: 3000,
       });
-      resetField('position');
-      resetField('candidateId');
+      // Reset the entire form
+      reset();
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
-        toast.error('Error: ' + (err.response?.data?.msg ?? 'Voting failed'), {
+        const errorMessage = err.response?.data?.msg || 'Voting failed';
+        toast.error(`Error: ${errorMessage}`, {
           position: 'top-right',
           autoClose: 5000,
         });
+        
+        // If it's a duplicate vote error, clear the position and candidate fields
+        if (errorMessage.includes('already voted')) {
+          reset({
+            voterName: data.voterName,
+            voterEmail: data.voterEmail,
+            position: undefined,
+            candidateId: undefined,
+          });
+        }
       } else if (err instanceof Error) {
-        toast.error('Error: ' + err.message, {
+        toast.error(`Error: ${err.message}`, {
           position: 'top-right',
           autoClose: 5000,
         });
@@ -96,6 +108,8 @@ export default function Vote() {
           autoClose: 5000,
         });
       }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -104,6 +118,9 @@ export default function Vote() {
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold">Vote for a Candidate</h1>
         <p className="mt-2">Select your preferred candidate for each position.</p>
+        <p className="text-sm text-gray-600 mt-2">
+          Note: You can only vote once per position with the same email.
+        </p>
       </div>
 
       {loading ? (
@@ -111,6 +128,17 @@ export default function Vote() {
       ) : (
         <form onSubmit={handleSubmit(onSubmit)} className="max-w-md mx-auto p-6 bg-white rounded shadow">
           <h2 className="text-2xl font-bold mb-4">Submit Your Vote</h2>
+          
+          <div className="mb-4">
+            <label className="block text-sm font-medium">Your Full Name</label>
+            <input
+              {...register('voterName')}
+              type="text"
+              className="w-full border p-2 rounded"
+              placeholder="Enter your full name"
+            />
+            {errors.voterName && <p className="text-red-500 text-xs">{errors.voterName.message}</p>}
+          </div>
 
           <div className="mb-4">
             <label className="block text-sm font-medium">Your Email</label>
@@ -126,7 +154,7 @@ export default function Vote() {
           <div className="mb-4">
             <label className="block text-sm font-medium">Position</label>
             <select {...register('position')} className="w-full border p-2 rounded">
-              <option value="">Select...</option>
+              <option value="">Select a position...</option>
               {Object.keys(candidates).map(pos => (
                 <option key={pos} value={pos}>{pos}</option>
               ))}
@@ -134,7 +162,7 @@ export default function Vote() {
             {errors.position && <p className="text-red-500 text-xs">{errors.position.message}</p>}
           </div>
 
-          <div className="mb-4">
+          <div className="mb-6">
             <label className="block text-sm font-medium">Candidate</label>
             <select
               {...register('candidateId')}
@@ -159,10 +187,10 @@ export default function Vote() {
 
           <button
             type="submit"
-            className="w-full bg-green-500 text-white p-2 rounded hover:bg-green-600 disabled:bg-gray-400"
-            disabled={!selectedPosition || candidates[selectedPosition]?.length === 0}
+            className="w-full bg-green-500 text-white p-2 rounded hover:bg-green-600 disabled:bg-gray-400 transition-colors"
+            disabled={!selectedPosition || candidates[selectedPosition]?.length === 0 || isSubmitting}
           >
-            Submit Vote
+            {isSubmitting ? 'Submitting Vote...' : 'Submit Vote'}
           </button>
         </form>
       )}
