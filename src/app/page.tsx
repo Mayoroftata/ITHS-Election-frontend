@@ -25,10 +25,12 @@ export default function Home() {
           </Link>
         </div>
         <div className="mt-6 text-sm">
-          <p>
+
+          
+          {/* <p>
             Election Committee: <Link href="/committee/login" className="text-blue-500 hover:underline">Login</Link> |{' '}
             <Link href="/committee/signup" className="text-blue-500 hover:underline">Signup</Link>
-          </p>
+          </p> */}
         </div>
       </div>
       <ToastContainer position="top-right" autoClose={3000} />

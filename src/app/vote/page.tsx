@@ -118,9 +118,9 @@ export default function Vote() {
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold">Vote for a Candidate</h1>
         <p className="mt-2">Select your preferred candidate for each position.</p>
-        <p className="text-sm text-gray-600 mt-2">
+        {/* <p className="text-sm text-gray-600 mt-2">
           Note: You can only vote once per position with the same email.
-        </p>
+        </p> */}
       </div>
 
       {loading ? (
