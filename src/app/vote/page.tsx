@@ -75,7 +75,8 @@ export default function Vote() {
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true);
     try {
-      await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/votes`, data);
+      await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/votes`, data);
+      
       toast.success('Vote submitted successfully!', {
         position: 'top-right',
         autoClose: 3000,
