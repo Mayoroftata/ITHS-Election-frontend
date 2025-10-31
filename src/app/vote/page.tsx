@@ -174,7 +174,7 @@ export default function Vote() {
               <option value="">Select a candidate...</option>
               {selectedPosition && candidates[selectedPosition]?.map(candidate => (
                 <option key={candidate._id} value={candidate._id}>
-                  {candidate.name} ({candidate.email})
+                  {candidate.name}
                 </option>
               ))}
             </select>
