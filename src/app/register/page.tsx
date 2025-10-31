@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import RegistrationClosed from '@/components/RegistrationClosed';
 // import CandidateForm from '@/components/candidateForm';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -12,12 +12,7 @@ export default function Register() {
         <h1 className="text-3xl font-bold">Candidate Registration</h1>
         <p className="mt-2">Register to run for an ITHS Alumni Committee position.</p>
       </div>
-
-        <div>
-          <p>
-            Registration for committee positions is currently closed. Please proceed to <Link href="/vote">vote</Link> to cast your vote for your preferred candidate.
-          </p>
-        </div>
+      <RegistrationClosed />
       {/* <CandidateForm/> */}
       <ToastContainer position="top-right" autoClose={3000} />
     </main>
