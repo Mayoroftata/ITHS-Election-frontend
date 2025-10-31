@@ -248,9 +248,7 @@ export default function Dashboard() {
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="text-sm font-medium text-gray-900">{candidate.name}</div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm text-gray-600">{candidate.email}</div>
-                            </td>
+                            
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="text-sm text-gray-600">
                                 {new Date(candidate.createdAt).toLocaleDateString()}
