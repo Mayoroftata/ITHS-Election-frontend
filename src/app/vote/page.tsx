@@ -20,15 +20,18 @@ interface CandidateGroup {
   [key: string]: Candidate[];
 }
 
-// Create dynamic schema that depends on available positions
+// Create dynamic schema that properly validates ALL positions
 const createSchema = (availablePositions: string[]) => z.object({
   voterName: z.string().min(1, 'Name is required').min(2, 'Name must be at least 2 characters'),
   voterEmail: z.string().email('Invalid email'),
   votes: z.record(z.string(), z.string().min(1, 'Please select a candidate for this position'))
     .refine((votes) => {
       const votedPositions = Object.keys(votes);
-      const missingPositions = availablePositions.filter(pos => !votedPositions.includes(pos));
-      return missingPositions.length === 0;
+      // Check that every available position has a vote
+      const allPositionsVoted = availablePositions.every(position => 
+        votedPositions.includes(position) && votes[position]?.trim() !== ''
+      );
+      return allPositionsVoted;
     }, `Please vote for all ${availablePositions.length} positions`),
 });
 
@@ -41,11 +44,12 @@ export default function Vote() {
   
   const availablePositions = Object.keys(candidates);
   
-  const { register, handleSubmit, formState: { errors }, watch, reset, setValue } = useForm<FormData>({
+  const { register, handleSubmit, formState: { errors }, watch, reset, formState } = useForm<FormData>({
     resolver: zodResolver(createSchema(availablePositions)),
     defaultValues: {
       votes: {}
-    }
+    },
+    mode: 'onChange' // Validate on change to update UI in real-time
   });
 
   // Fetch candidates on mount
@@ -69,6 +73,27 @@ export default function Vote() {
     fetchCandidates();
   }, []);
 
+  // Watch form values
+  const formValues = watch();
+  const votes = formValues.votes || {};
+
+  // Calculate progress - only count positions that have actual votes
+  const votesCount = Object.keys(votes).filter(position => 
+    votes[position]?.trim() !== ''
+  ).length;
+
+  const totalPositions = availablePositions.length;
+  
+  // Check if ALL positions have been voted for
+  const allPositionsVoted = availablePositions.every(position => 
+    votes[position]?.trim() !== ''
+  );
+
+  // Get missing positions for error display
+  const missingPositions = availablePositions.filter(position => 
+    !votes[position] || votes[position]?.trim() === ''
+  );
+
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true);
     try {
@@ -84,7 +109,7 @@ export default function Vote() {
 
       await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/votes/bulk`, voteData);
       
-      toast.success(`All ${availablePositions.length} votes submitted successfully!`, {
+      toast.success(`All ${totalPositions} votes submitted successfully!`, {
         position: 'top-right',
         autoClose: 3000,
       });
@@ -122,15 +147,6 @@ export default function Vote() {
       setIsSubmitting(false);
     }
   };
-
-  // Count how many positions the user has voted for
-  const votes = watch('votes') || {};
-  const votesCount = Object.keys(votes).length;
-  const totalPositions = availablePositions.length;
-  const allPositionsVoted = votesCount === totalPositions;
-
-  // Get missing positions for error display
-  const missingPositions = availablePositions.filter(pos => !votes[pos]);
 
   return (
     <main className="min-h-screen bg-gray-100 py-10 text-black">
@@ -193,24 +209,53 @@ export default function Vote() {
                   style={{ width: `${(votesCount / totalPositions) * 100}%` }}
                 ></div>
               </div>
+              
+              {/* Progress Status */}
+              <div className="mt-4">
+                <div className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold ${
+                  allPositionsVoted 
+                    ? 'bg-green-100 text-green-800 border border-green-300' 
+                    : 'bg-orange-100 text-orange-800 border border-orange-300'
+                }`}>
+                  {allPositionsVoted ? (
+                    <>
+                      <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                      All {totalPositions} positions voted! Ready to submit.
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM7 9a1 1 0 000 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                      </svg>
+                      {totalPositions - votesCount} position(s) remaining
+                      {missingPositions.length > 0 && (
+                        <span className="ml-2 text-orange-700">
+                          ({missingPositions.join(', ')})
+                        </span>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
 
-            {/* Error Message for Missing Votes */}
+   {/* Error Message for Missing Votes */}
             {errors.votes && (
               <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
                 <div className="flex items-center">
-                    <svg className="w-5 h-5 text-red-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                    </svg>
-                    <span className="text-red-800 font-medium">
-                      {errors.votes && typeof (errors.votes as { message?: unknown }).message === 'string'
-                        ? (errors.votes as { message?: string }).message
-                        : null}
-                    </span>
-                  </div>
+                  <svg className="w-5 h-5 text-red-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                  <span className="text-red-800 font-medium">
+                    {/* Safe access to message */}
+                    {errors.votes?.message?.toString() || 'Please vote for all positions'}
+                  </span>
+                </div>
                 {missingPositions.length > 0 && (
                   <p className="text-red-700 text-sm mt-2">
-                    Missing votes for: <strong>{missingPositions.join(', ')}</strong>
+                    Still missing votes for: <strong>{missingPositions.join(', ')}</strong>
                   </p>
                 )}
               </div>
@@ -220,7 +265,7 @@ export default function Vote() {
             <div className="space-y-6">
               {availablePositions.map((position) => {
                 const positionCandidates = candidates[position];
-                const hasVoted = !!votes[position];
+                const hasVoted = !!(votes[position] && votes[position].trim() !== '');
                 
                 return (
                   <div 
@@ -299,7 +344,7 @@ export default function Vote() {
                         <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                         </svg>
-                        All positions voted! Ready to submit.
+                        All {totalPositions} positions voted! Ready to submit.
                       </>
                     ) : (
                       <>
@@ -333,7 +378,10 @@ export default function Vote() {
                 </button>
                 
                 <p className="text-sm text-gray-600 mt-3">
-                  Your ballot will be submitted once you complete all {totalPositions} positions.
+                  {allPositionsVoted 
+                    ? 'Your ballot is complete and ready for submission.'
+                    : `Please complete all ${totalPositions} positions to submit your ballot.`
+                  }
                 </p>
               </div>
             </div>
