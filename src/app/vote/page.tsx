@@ -271,7 +271,7 @@ export default function Vote() {
                           />
                           <span className="ml-3 text-sm">
                             <span className="font-medium text-gray-900 block">{candidate.name}</span>
-                            <span className="text-gray-500 text-xs">{candidate.email}</span>
+                            {/* <span className="text-gray-500 text-xs">{candidate.email}</span> */}
                           </span>
                         </label>
                       ))}
